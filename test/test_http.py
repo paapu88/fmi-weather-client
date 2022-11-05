@@ -1,6 +1,6 @@
 import unittest
-import fmi_weather_client.http as http
-from fmi_weather_client.http import RequestType
+import fmi_weather_client.myhttp as http
+from fmi_weather_client.myhttp import RequestType
 from fmi_weather_client.errors import ClientError
 from collections import namedtuple
 

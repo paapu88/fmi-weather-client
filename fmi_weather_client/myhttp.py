@@ -13,6 +13,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class RequestType(Enum):
     """Possible request types"""
+    PASTWEATHER = -1
     WEATHER = 0
     FORECAST = 1
 
@@ -28,6 +29,17 @@ def request_weather_by_coordinates(lat: float, lon: float) -> str:
     params = _create_params(RequestType.WEATHER, 10, lat=lat, lon=lon)
     return _send_request(params)
 
+def request_past_weather_by_coordinates(lat: float, lon: float, mytime:datetime) -> str:
+    """
+    Get the latest weather information by coordinates.
+
+    :param lat: Latitude (e.g. 25.67087)
+    :param lon: Longitude (e.g. 62.39758)
+    :param mytime: Time of the past weather
+    :return: weather information at time mytime
+    """
+    params = _create_params(RequestType.WEATHER, 10, lat=lat, lon=lon, mytime=mytime)
+    return _send_request(params)
 
 def request_weather_by_place(place: str) -> str:
     """
@@ -37,6 +49,17 @@ def request_weather_by_place(place: str) -> str:
     :return: Latest weather information
     """
     params = _create_params(RequestType.WEATHER, 10, place=place)
+    return _send_request(params)
+
+def request_past_weather_by_place(place: str, mytime:datetime) -> str:
+    """
+    Get the latest weather information by place name.
+
+    :param place: Place name (e.g. Kaisaniemi, Helsinki)
+    :param mytime: Time of the past weather
+    :return: weather information at time mytime
+    """
+    params = _create_params(RequestType.PASTWEATHER, 10, place=place, mytime=mytime)
     return _send_request(params)
 
 
@@ -71,13 +94,15 @@ def _create_params(request_type: RequestType,
                    timestep_minutes: int,
                    place: Optional[str] = None,
                    lat: Optional[float] = None,
-                   lon: Optional[float] = None) -> Dict[str, Any]:
+                   lon: Optional[float] = None,
+                   mytime: Optional[datetime]=None) -> Dict[str, Any]:
     """
     Create query parameters
     :param timestep_minutes: Timestamp minutes
     :param place: Place name
     :param lat: Latitude
     :param lon: Longitude
+    :param mytime: Time of the past weather nowcast or forecast
     :return: Parameters
     """
 
@@ -87,9 +112,16 @@ def _create_params(request_type: RequestType,
     if request_type is RequestType.WEATHER:
         end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
         start_time = end_time - timedelta(minutes=10)
+        storedquery_id='fmi::forecast::harmonie::surface::point::multipointcoverage'
     elif request_type is RequestType.FORECAST:
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
         end_time = start_time + timedelta(days=4)
+        storedquery_id='fmi::forecast::harmonie::surface::point::multipointcoverage'
+    elif request_type is request_type.PASTWEATHER:
+        end_time = mytime.replace(tzinfo=timezone.utc)
+        start_time = end_time - timedelta(minutes=10)
+        storedquery_id = 'fmi::forecast::harmonie::surface::point::multipointcoverage'
+        #storedquery_id = 'fmi::observations::weather::multipointcoverage'
     else:
         raise Exception(f"Invalid request_type {request_type}")
 
@@ -97,7 +129,7 @@ def _create_params(request_type: RequestType,
         'service': 'WFS',
         'version': '2.0.0',
         'request': 'getFeature',
-        'storedquery_id': 'fmi::forecast::harmonie::surface::point::multipointcoverage',
+        'storedquery_id': storedquery_id,
         'timestep': timestep_minutes,
         'starttime': start_time.isoformat(timespec='seconds'),
         'endtime': end_time.isoformat(timespec='seconds'),
@@ -151,3 +183,7 @@ def _handle_errors(response: requests.Response):
             raise ClientError(response.status_code, response.text)
 
     raise ServerError(response.status_code, response.text)
+
+if __name__ == '__main__':
+    weather = request_past_weather_by_coordinates(lat=60.1882122,  lon=24.9370885, mytime=datetime(year=2020, month=10, day=11, hour=10))
+    print(weather.data)

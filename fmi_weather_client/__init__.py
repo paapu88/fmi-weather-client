@@ -1,8 +1,9 @@
+import datetime
 from typing import Optional
 
 import asyncio
 
-from fmi_weather_client import http
+from fmi_weather_client import myhttp
 from fmi_weather_client.models import Weather
 from fmi_weather_client.parsers import forecast as forecast_parser
 
@@ -45,6 +46,25 @@ def weather_by_place_name(name: str) -> Optional[Weather]:
     :return: Latest weather information if available; None otherwise
     """
     response = http.request_weather_by_place(name)
+    #print(f"present response: {response}")
+
+    forecast = forecast_parser.parse_forecast(response)
+    if len(forecast.forecasts) == 0:
+        return None
+
+    weather_state = forecast.forecasts[-1]
+    return Weather(forecast.place, forecast.lat, forecast.lon, weather_state)
+
+def past_weather_by_place_name(name: str, mytime:datetime.datetime) -> Optional[Weather]:
+    """
+    Get the laweather information by place name.
+
+    :param name: Place name (e.g. Kaisaniemi, Helsinki)
+    :param mytime: Time of the past weather
+    :return: Latest weather information if available; None otherwise
+    """
+    response = http.request_past_weather_by_place(place=name, mytime=mytime)
+    #print(f"past response: {response}")
     forecast = forecast_parser.parse_forecast(response)
     if len(forecast.forecasts) == 0:
         return None
